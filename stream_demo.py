@@ -1,93 +1,64 @@
 """
 stream_demo.py — consume Wikipedia's real-time edit stream.
 
-Wikipedia publishes a public, no-auth, push-based stream of every edit
-happening on every Wikipedia in real time. We connect, listen, and
-print each edit as it arrives.
-
-This is real streaming — not polling. The server pushes events to us
-over a long-lived HTTP connection (Server-Sent Events / SSE). We don't
-ask "anything new?" every N seconds. We hold the line open and the
-server tells us.
-
-Run this and edits will scroll past your terminal live. Ctrl+C to stop.
-
-Install:
-    pip install requests sseclient-py
+This is real streaming, not polling. We open one HTTP connection and
+the server pushes each Wikipedia edit to us as it happens (Server-Sent
+Events). Ctrl+C to stop.
 
 Run:
-    python stream_demo.py             # connect to the real stream
+    python stream_demo.py             # live
     python stream_demo.py --mock      # replay from mock_events.jsonl
-                                       # (use if conference wifi blocks SSE)
 """
 
-import argparse
 import json
+import os
+import sys
 import time
+from datetime import datetime
 
 import requests
 from sseclient import SSEClient
 
 URL = "https://stream.wikimedia.org/v2/stream/recentchange"
-MOCK_FILE = "mock_events.jsonl"
+CAPTURE_DIR = "captures"
 
 
-def format_event(change: dict) -> str:
-    """Format one Wikipedia change event into a readable line."""
-    wiki = change.get("wiki", "?")           # e.g. "enwiki", "dewiki"
-    change_type = change.get("type", "?")    # "edit", "new", "log", ...
+def show(change):
+    wiki = change.get("wiki", "?")
+    kind = change.get("type", "?")
     title = change.get("title", "?")
     user = change.get("user", "anon")
-    return f"[{wiki:8s}] {change_type:6s}  {title}  —  by {user}"
+    print(f"[{wiki:8s}] {kind:6s}  {title}  —  by {user}")
 
 
-def stream_live() -> None:
-    """Connect to the real Wikipedia EventStream and print events."""
-    print(f"→ Connecting to {URL}")
-    print("→ Press Ctrl+C to stop.\n")
+def live():
+    # stream=True keeps the connection open so the server can push.
+    # Wikimedia requires a descriptive User-Agent.
+    response = requests.get(URL, stream=True, headers={
+        "User-Agent": "stream-demo/0.1 (teaching example)",
+    })
 
-    # stream=True keeps the connection open; the server pushes events.
-    response = requests.get(URL, stream=True, headers={"Accept": "text/event-stream"})
-    client = SSEClient(response)
+    os.makedirs(CAPTURE_DIR, exist_ok=True)
+    path = f"{CAPTURE_DIR}/{datetime.now():%Y%m%d-%H%M%S}.jsonl"
+    print(f"→ saving to {path}")
 
-    for event in client.events():
-        if not event.data:
-            continue
-        try:
-            change = json.loads(event.data)
-        except json.JSONDecodeError:
-            continue
-        print(format_event(change))
+    with open(path, "a") as out:
+        for event in SSEClient(response).events():
+            if event.data:
+                out.write(event.data + "\n")
+                out.flush()  # so Ctrl+C doesn't lose buffered lines
+                show(json.loads(event.data))
 
 
-def stream_mock() -> None:
-    """Replay events from a local file with realistic-looking pacing.
-
-    Use this if conference wifi blocks the live stream, or to demo
-    offline. Each line in mock_events.jsonl is one event JSON.
-    """
-    print(f"→ Replaying from {MOCK_FILE} (mock mode)\n")
-    with open(MOCK_FILE) as f:
+def mock():
+    with open("mock_events.jsonl") as f:
         for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            change = json.loads(line)
-            print(format_event(change))
-            time.sleep(0.3)  # pace it like a real stream
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mock", action="store_true",
-                        help="Replay from mock_events.jsonl instead of live stream")
-    args = parser.parse_args()
-
-    try:
-        stream_mock() if args.mock else stream_live()
-    except KeyboardInterrupt:
-        print("\n→ Stream closed.")
+            show(json.loads(line))
+            time.sleep(0.3)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        mock() if "--mock" in sys.argv else live()
+    except KeyboardInterrupt:
+        print("\n→ Stream closed.")
