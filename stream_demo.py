@@ -3,17 +3,12 @@ stream_demo.py — consume Wikipedia's real-time edit stream.
 
 This is real streaming, not polling. We open one HTTP connection and
 the server pushes each Wikipedia edit to us as it happens (Server-Sent
-Events). Ctrl+C to stop.
-
-Run:
-    python stream_demo.py             # live
-    python stream_demo.py --mock      # replay from mock_events.jsonl
+Events). Each event is also appended to captures/<timestamp>.jsonl.
+Ctrl+C to stop.
 """
 
 import json
 import os
-import sys
-import time
 from datetime import datetime
 
 import requests
@@ -50,15 +45,8 @@ def live():
                 show(json.loads(event.data))
 
 
-def mock():
-    with open("mock_events.jsonl") as f:
-        for line in f:
-            show(json.loads(line))
-            time.sleep(0.3)
-
-
 if __name__ == "__main__":
     try:
-        mock() if "--mock" in sys.argv else live()
+        live()
     except KeyboardInterrupt:
         print("\n→ Stream closed.")
