@@ -7,9 +7,9 @@ Events). Each event is also appended to captures/<timestamp>.jsonl.
 Ctrl+C to stop.
 """
 
-import argparse
 import json
 import os
+import sys
 from datetime import datetime
 
 import requests
@@ -34,7 +34,7 @@ def keep(stream_data):
     )
 
 
-def live(filter_on):
+def live(filter=False):
     # stream=True keeps the connection open so the server can push.
     # Wikimedia requires a descriptive User-Agent.
     response = requests.get(URL, stream=True, headers={
@@ -44,14 +44,14 @@ def live(filter_on):
     os.makedirs(CAPTURE_DIR, exist_ok=True)
     path = f"{CAPTURE_DIR}/{datetime.now():%Y%m%d-%H%M%S}.jsonl"
     print(f"→ saving to {path}")
-    print(f"→ filter: {'enwiki articles only' if filter_on else 'off (firehose)'}")
+    print(f"→ filter: {'enwiki articles only' if filter else 'off (firehose)'}")
 
     with open(path, "a") as out:
         for event in SSEClient(response).events():
             if not event.data:
                 continue
             stream_data = json.loads(event.data)
-            if filter_on and not keep(stream_data):
+            if filter and not keep(stream_data):
                 continue
             out.write(event.data + "\n")
             out.flush()  # so Ctrl+C doesn't lose buffered lines
@@ -59,15 +59,12 @@ def live(filter_on):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--filter-on",
-        action="store_true",
-        help="filter to English Wikipedia articles only (default: show everything)",
-    )
-    args = parser.parse_args()
+    # Pass "--filter-on" on the command line to enable the filter:
+    #   python stream_demo.py               → everything (firehose)
+    #   python stream_demo.py --filter-on   → enwiki only
+    filter_on = "--filter-on" in sys.argv
 
     try:
-        live(filter_on=args.filter_on)
+        live(filter_on)
     except KeyboardInterrupt:
         print("\n→ Stream closed.")
