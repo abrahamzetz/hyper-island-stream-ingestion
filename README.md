@@ -42,22 +42,3 @@ You should see edits scrolling past — `[enwiki  ] edit    Climate change  — 
 
 Each run also appends every event to `captures/<timestamp>.jsonl` so
 you have a replayable record. `captures/` is gitignored.
-
-## Teaching notes
-
-- **Don't dwell on the code.** It's ~30 lines. Show it for 30 seconds.
-  The point is the *output*, not the implementation.
-- **Let it run for 60–90 seconds** while you talk. The output is
-  hypnotic and reinforces the concept while you explain.
-- **Show the firehose first, then flip the filter.** Run unfiltered,
-  let students feel the volume, Ctrl+C, rerun with `--filter-on`. The
-  drop in noise is the point: in real streaming you get *everything*
-  and filter on the consumer side. There is no "give me only English"
-  query to the server.
-- **The filter is one function.** [wikipedia.py:30-34](wikipedia.py#L30-L34) — a
-  three-line predicate. Open it live and tweak: `"dewiki"` for German,
-  add `namespace == 0` for articles only, etc.
-- **Talk about what's NOT happening.** No retries on connection drop.
-  No durability if your laptop crashes mid-stream — those events are
-  gone forever. That's why Kafka exists: it sits between the producer
-  and the consumer, holds events durably, lets you replay.
