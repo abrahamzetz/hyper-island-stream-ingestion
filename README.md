@@ -1,6 +1,6 @@
 # Stream Ingestion Demo
 
-A 30-line script that consumes Wikipedia's real-time edit stream. Run
+A ~30-line script that consumes Wikipedia's real-time edit stream. Run
 it in your terminal during the streaming session — edits scroll by
 live.
 
@@ -14,41 +14,49 @@ as they arrive.
 
 ## Setup
 
-```bash
-pip install requests sseclient-py
-```
-
-## Run live (preferred)
+Requires Python 3.13+. Either:
 
 ```bash
-python stream_demo.py
+# with uv (recommended)
+uv sync
+
+# or with pip
+pip install -r requirements.txt
 ```
 
-You should see edits scrolling past — `[enwiki] edit   Climate change — by SomeUser` etc.
+## Run
 
-## Run from mock data (fallback)
-
-If conference wifi blocks the stream (rare but possible — Wikipedia's
-SSE endpoint uses a persistent connection some firewalls drop), use:
+Firehose — every change from every wiki, every language, bots and all:
 
 ```bash
-python stream_demo.py --mock
+python wikipedia.py
 ```
 
-This replays `mock_events.jsonl` with realistic pacing. Visually
-identical to the live demo.
+Filtered — English Wikipedia only:
+
+```bash
+python wikipedia.py --filter-on
+```
+
+You should see edits scrolling past — `[enwiki  ] edit    Climate change  —  by SomeUser` etc.
+
+Each run also appends every event to `captures/<timestamp>.jsonl` so
+you have a replayable record. `captures/` is gitignored.
 
 ## Teaching notes
 
-- **Don't dwell on the code.** It's 30 lines. Show it for 30 seconds.
+- **Don't dwell on the code.** It's ~30 lines. Show it for 30 seconds.
   The point is the *output*, not the implementation.
 - **Let it run for 60–90 seconds** while you talk. The output is
   hypnotic and reinforces the concept while you explain.
-- **Filter live to make a point.** Mid-demo, Ctrl+C, edit the script
-  to add `if wiki != "enwiki": continue` and re-run. Suddenly only
-  English Wikipedia edits. Teaching moment: in real streaming, you
-  filter on the consumer side. There is no "give me only English"
-  query — you get everything and filter.
+- **Show the firehose first, then flip the filter.** Run unfiltered,
+  let students feel the volume, Ctrl+C, rerun with `--filter-on`. The
+  drop in noise is the point: in real streaming you get *everything*
+  and filter on the consumer side. There is no "give me only English"
+  query to the server.
+- **The filter is one function.** [wikipedia.py:30-34](wikipedia.py#L30-L34) — a
+  three-line predicate. Open it live and tweak: `"dewiki"` for German,
+  add `namespace == 0` for articles only, etc.
 - **Talk about what's NOT happening.** No retries on connection drop.
   No durability if your laptop crashes mid-stream — those events are
   gone forever. That's why Kafka exists: it sits between the producer
