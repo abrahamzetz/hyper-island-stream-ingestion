@@ -42,7 +42,7 @@ def live(filter=False):
     })
 
     os.makedirs(CAPTURE_DIR, exist_ok=True)
-    path = f"{CAPTURE_DIR}/{datetime.now():%Y%m%d-%H%M%S}.jsonl"
+    path = f"{CAPTURE_DIR}/wiki_{datetime.now():%Y%m%d-%H%M%S}.jsonl"
     print(f"→ saving to {path}")
     print(f"→ filter: {'enwiki articles only' if filter else 'off (firehose)'}")
 
