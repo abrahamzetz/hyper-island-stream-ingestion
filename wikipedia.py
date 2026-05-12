@@ -46,7 +46,7 @@ def live(filter=False):
     print(f"→ saving to {path}")
     print(f"→ filter: {'enwiki articles only' if filter else 'off (firehose)'}")
 
-    with open(path, "a") as out:
+    with open(path, "a", encoding="utf-8") as out:
         for event in SSEClient(response).events():
             if not event.data:
                 continue
